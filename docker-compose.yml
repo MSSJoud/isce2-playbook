@@ -1,0 +1,29 @@
+services:
+  isce2-insar:
+    build:
+      context: ./isce2-insar
+    volumes:
+      - ./:/workspace
+      - isce2-insar-vscode-extensions:/root/.vscode-server/extensions/
+    tty: true
+
+  stac-search:
+    build:
+      context: ./stac-search
+    volumes:
+      - ./:/workspace
+      - stac-search-vscode-extensions:/root/.vscode-server/extensions/
+    tty: true
+
+  analyze-insar:
+    build:
+      context: ./analyze-insar
+    volumes:
+      - ./:/workspace
+      - analyze-insar-vscode-extensions:/root/.vscode-server/extensions/
+    tty: true
+
+volumes:
+  isce2-insar-vscode-extensions:
+  stac-search-vscode-extensions:
+  analyze-insar-vscode-extensions:

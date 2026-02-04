@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topsApp>
+  <component name="topsinsar">
+    <property name="Sensor name">SENTINEL1</property>
+    <component name="reference">
+        <catalog>/workspace/input-files/reference.xml</catalog>
+    </component>
+    <component name="secondary">
+        <catalog>/workspace/input-files/secondary.xml</catalog>
+    </component>
+    <property name="swaths">[1, 2, 3]</property>
+    <!--<property name="do unwrap">True</property>-->
+    <!--<property name="unwrapper name">snaphu_mcf</property>-->
+  </component>
+</topsApp>

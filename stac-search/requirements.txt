@@ -1,0 +1,4 @@
+pystac
+pystac-client
+stac-asset
+pandas

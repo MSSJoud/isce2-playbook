@@ -1,0 +1,5 @@
+<component name="secondary">
+    <property name="orbit directory">/workspace/data/orbit</property>
+    <property name="output directory">/workspace/output/secondary</property>
+    <property name="safe">/workspace/data/safe/unzip/S1A_IW_SLC__1SDV_20240816T204328_20240816T204355_055243_06BBF9_E926.SAFE</property>
+</component>
