@@ -21,10 +21,10 @@ class InSARPair:
 
     def isInSARPair(self) -> bool:
         for key in [
-            "relativeOrbitNumber",
-            "orbitDirection",
-            "productType",
-            "operationalMode",
+             "sat:relative_orbit",  # before "relativeOrbitNumber"
+            "sat:orbit_state",     # before "orbitDirection"
+            "product:type",        # before "productType"
+            "sar:instrument_mode", # before "operationalMode"
         ]:
             if self.first.properties[key] != self.second.properties[key]:
                 return False
@@ -50,6 +50,14 @@ def search_slc_items(start_date: str, end_date: str) -> List[pystac.Item]:
             slc_items.add(item)
 
     slc_items = list(slc_items)
+    if slc_items:
+        primeiro = slc_items[0]
+        print("ID do primeiro item:", primeiro.id)
+        print("Propriedades disponíveis:")
+        for k in sorted(primeiro.properties.keys()):
+            print(f"  {k}: {primeiro.properties[k]}")
+    else:
+        print("Nenhum item encontrado na busca.")
     slc_items.sort(key=lambda item: item.datetime)
     return slc_items
 
