@@ -1,6 +1,6 @@
 # isce2-insar
 
-Please review this before processing to confirm whether it works regarding the credentials: https://gist.github.com/fuzsh/37a4ac0baaf679d085c54b32230f3547
+Please review this before processing to confirm whether it works regarding the credentials: test.py
   
 ## What This Project Does
  
