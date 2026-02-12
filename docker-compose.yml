@@ -13,6 +13,9 @@ services:
     volumes:
       - ./:/workspace
       - stac-search-vscode-extensions:/root/.vscode-server/extensions/
+    environment:
+      - COPERNICUS_USER=${COPERNICUS_USER}
+      - COPERNICUS_PASSWORD=${COPERNICUS_PASSWORD}
     tty: true
 
   analyze-insar:
