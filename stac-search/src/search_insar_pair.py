@@ -21,7 +21,7 @@ class InSARPair:
 
     def isInSARPair(self) -> bool:
         for key in [
-             "sat:relative_orbit",  # before "relativeOrbitNumber"
+            "sat:relative_orbit",  # before "relativeOrbitNumber"
             "sat:orbit_state",     # before "orbitDirection"
             "product:type",        # before "productType"
             "sar:instrument_mode", # before "operationalMode"

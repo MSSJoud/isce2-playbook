@@ -8,7 +8,7 @@
     <component name="secondary">
         <catalog>/workspace/input-files/secondary.xml</catalog>
     </component>
-    <property name="swaths">[1, 2, 3]</property>
+    <property name="swaths">[1]</property>
     <!--<property name="do unwrap">True</property>-->
     <!--<property name="unwrapper name">snaphu_mcf</property>-->
   </component>

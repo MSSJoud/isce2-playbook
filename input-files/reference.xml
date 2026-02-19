@@ -1,5 +1,5 @@
 <component name="reference">
     <property name="orbit directory">/workspace/data/orbit</property>
     <property name="output directory">/workspace/output/reference</property>
-    <property name="safe">/workspace/data/safe/unzip/S1A_IW_SLC__1SDV_20240804T204328_20240804T204355_055068_06B592_4428.SAFE</property>
+    <property name="safe">/workspace/data/safe/unzip/S1A_IW_SLC__1SDV_20210131T094602_20210131T094630_036380_044503_40CB.SAFE</property>
 </component>

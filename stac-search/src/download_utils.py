@@ -28,24 +28,15 @@ async def download_item(item: pystac.Item, output_dir: Path) -> None:
     client = await stac_asset.HttpClient.from_config(config=config)
     try:
         # prefer 'product' asset, fallback to first asset
-        asset_key = "product" if "product" in item.assets else next(iter(item.assets))
-        asset = item.assets[asset_key]
+        asset = item.assets["product"]
+        href = asset.href
 
-        # choose href to download (use replaced href already set by replace_href)
-        href = getattr(asset, "href", None) or asset.to_dict().get("href")
-
-        # try to get a stable filename from alternate.s3.href if present
-        asset_dict = asset.to_dict()
-        alt_s3 = asset_dict.get("alternate", {}).get("s3", {}).get("href")
-        if alt_s3:
-            filename = os.path.basename(alt_s3)
-        elif href:
-            filename = os.path.basename(href.split("?")[0]) or f"{item.id}.zip"
-        else:
-            filename = f"{item.id}.zip"
-
+        # Nome do arquivo = ID do item + .zip
+        filename = f"{item.id}.zip"
         outpath = output_dir / filename
 
+        print(f"Downloading {filename} from {href}")
         await client.download_href(href=href, path=outpath)
+        print(f"Download Concluded: {outpath}")
     finally:
         await client.close()
