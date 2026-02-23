@@ -1,7 +1,7 @@
-import asyncio
 import re
 import zipfile
-from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -9,9 +9,11 @@ import pystac
 import requests
 from bs4 import BeautifulSoup
 from settings import DATA_ORBIT_DIR, DATA_STAC_DIR
-from datetime import datetime, timedelta, timezone
 
-# URLs base da ESA (POEORB e RESORB)
+# ESA STEP auxiliary data server.
+# Files are organised by year AND month of their validity start date:
+#   https://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1A/{year}/{month}/
+# The year/ level only lists month subdirectories — never .EOF files.
 BASE_URL_POEORB = {
     "S1A": "https://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1A/",
     "S1B": "https://step.esa.int/auxdata/orbits/Sentinel-1/POEORB/S1B/",
@@ -26,247 +28,285 @@ def get_stac_json_paths() -> List[Path]:
     return list(DATA_STAC_DIR.glob("*.json"))
 
 
-def get_platform_and_orbit_from_item(item: pystac.Item) -> Tuple[Optional[str], Optional[int]]:
-    """
-    Extrai plataforma (S1A, S1B) e número da órbita relativa do item.
-    Normaliza diferentes formas de escrita.
-    """
-    platform = None
-    # Mapeamento de possíveis valores para o código padrão S1A/S1B
+def get_platform_from_item(item: pystac.Item) -> Optional[str]:
+    """Return 'S1A' or 'S1B' from a STAC item, or None if unrecognised."""
     platform_map = {
         "sentinel-1a": "S1A",
         "sentinel-1b": "S1B",
         "s1a": "S1A",
         "s1b": "S1B",
-        "S1A": "S1A",
-        "S1B": "S1B",
-        "SENTINEL-1A": "S1A",
-        "SENTINEL-1B": "S1B",
     }
-
-    # Tenta obter a plataforma da propriedade 'platform'
-    raw_platform = item.properties.get('platform', '').lower()
-    if raw_platform:
-        platform = platform_map.get(raw_platform)
+    raw = item.properties.get("platform", "").lower()
+    if raw:
+        platform = platform_map.get(raw)
         if platform:
-            print(f"Plataforma identificada via properties: {raw_platform} -> {platform}")
-        else:
-            print(f"Valor não mapeado em properties: {raw_platform}")
+            return platform
 
-    # Se não conseguiu, tenta pelo ID (ex: S1A_IW_SLC...)
-    if not platform:
-        if item.id.startswith('S1A'):
-            platform = "S1A"
-        elif item.id.startswith('S1B'):
-            platform = "S1B"
-        if platform:
-            print(f"Plataforma identificada via ID: {platform}")
+    # Fallback: parse the item ID directly (e.g. S1A_IW_SLC_...)
+    if item.id.startswith("S1A"):
+        return "S1A"
+    if item.id.startswith("S1B"):
+        return "S1B"
+    return None
 
-    # Número da órbita relativa
-    orbit = item.properties.get('sat:relative_orbit')
 
-    return platform, orbit
+def _to_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    """Normalise a datetime to UTC-aware. Treats naive datetimes as UTC."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def get_scene_window(item: pystac.Item) -> Tuple[Optional[datetime], Optional[datetime]]:
+    """
+    Return (scene_start, scene_end) as UTC-aware datetimes.
+
+    ISCE2's fetchOrbit.py validates orbit coverage against BOTH the start
+    and stop times of the acquisition:
+        orbit_valid_start <= scene_start  AND  orbit_valid_end >= scene_stop
+
+    STAC common_metadata carries start_datetime / end_datetime when present.
+    If missing, item.datetime (usually scene start) is used for both bounds.
+    """
+    start = _to_utc(item.common_metadata.start_datetime)
+    end = _to_utc(item.common_metadata.end_datetime)
+
+    if start is None or end is None:
+        fallback = _to_utc(item.datetime)
+        start = start or fallback
+        end = end or fallback
+
+    return start, end
 
 
 def parse_orbit_filename(filename: str) -> Optional[Tuple[datetime, datetime]]:
     """
-    Extrai do nome do arquivo .EOF os timestamps de início e fim de validade.
-    Exemplo: S1A_OPER_AUX_POEORB_OPOD_20210304T120252_V20210211T225942_20210213T005942.EOF
-    Retorna (start_valid, end_valid) como datetime com timezone UTC ou None.
+    Parse the validity window from an orbit filename.
+
+    Example:
+        S1A_OPER_AUX_POEORB_OPOD_20210304T120252_V20210211T225942_20210213T005942.EOF
+        → valid_start = 2021-02-11T22:59:42Z
+        → valid_end   = 2021-02-13T00:59:42Z
+
+    Returns (valid_start, valid_end) as UTC-aware datetimes, or None.
     """
-    # Remove extensão .zip se existir
-    if filename.endswith('.zip'):
-        filename = filename[:-4]
-    # Padrão: _V(YYYYMMDDTHHMMSS)_(YYYYMMDDTHHMMSS).EOF
-    match = re.search(r'_V(\d{8}T\d{6})_(\d{8}T\d{6})\.EOF$', filename)
-    if not match:
+    base = filename[:-4] if filename.endswith(".zip") else filename
+    m = re.search(r"_V(\d{8}T\d{6})_(\d{8}T\d{6})\.EOF$", base)
+    if not m:
         return None
-    start_str, end_str = match.groups()
     try:
-        # Adiciona timezone UTC
-        start = datetime.strptime(start_str, "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
-        end = datetime.strptime(end_str, "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
-        return start, end
+        valid_start = datetime.strptime(m.group(1), "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+        valid_end = datetime.strptime(m.group(2), "%Y%m%dT%H%M%S").replace(tzinfo=timezone.utc)
+        return valid_start, valid_end
     except ValueError:
         return None
 
 
-def unzip_file(zip_path: Path, delete_zip: bool = True) -> Optional[Path]:
+def orbit_covers_scene(
+    orbit_start: datetime,
+    orbit_end: datetime,
+    scene_start: datetime,
+    scene_end: datetime,
+) -> bool:
     """
-    Descompacta um arquivo .EOF.zip e retorna o caminho do .EOF extraído.
-    Se delete_zip=True, remove o zip após extração.
+    Replicates ISCE2 fetchOrbit.py bracketing logic (line 153):
+        (orbit_start <= scene_start) AND (orbit_end >= scene_end)
+
+    The orbit file must cover the FULL acquisition window, not just the
+    centre or start time of the scene.
+    """
+    return orbit_start <= scene_start and orbit_end >= scene_end
+
+
+def unzip_file(zip_path: Path, delete_zip: bool = True) -> Optional[Path]:
+    """Extract the .EOF from a .EOF.zip and optionally remove the zip.
+
+    The ESA STEP ZIPs nest the .EOF inside a full server path tree:
+        var/www/auxdata/orbits/Sentinel-1/POEORB/S1A/YYYY/MM/<name>.EOF
+    Using z.extract() would recreate that tree on disk.  Instead, read the
+    file content directly and write it flat next to the zip.
     """
     try:
-        with zipfile.ZipFile(zip_path, 'r') as z:
-            # Assume que há apenas um arquivo .EOF dentro
-            eof_files = [f for f in z.namelist() if f.endswith('.EOF')]
-            if not eof_files:
-                print(f"Nenhum arquivo .EOF encontrado dentro de {zip_path.name}")
+        with zipfile.ZipFile(zip_path, "r") as z:
+            eof_entries = [f for f in z.namelist() if f.endswith(".EOF")]
+            if not eof_entries:
+                print(f"No .EOF found inside {zip_path.name}")
                 return None
-            # Extrai para o mesmo diretório
-            z.extract(eof_files[0], path=zip_path.parent)
-            extracted = zip_path.parent / eof_files[0]
-            print(f"Extraído: {extracted}")
+            # Write the .EOF directly into the target directory (no subdirs)
+            eof_name = Path(eof_entries[0]).name
+            target = zip_path.parent / eof_name
+            target.write_bytes(z.read(eof_entries[0]))
+            print(f"Extracted: {eof_name}")
             if delete_zip:
                 zip_path.unlink()
-                print(f"Zip removido: {zip_path.name}")
-            return extracted
+                print(f"Removed zip: {zip_path.name}")
+            return target
     except Exception as e:
-        print(f"Erro ao descompactar {zip_path}: {e}")
+        print(f"Failed to extract {zip_path}: {e}")
         return None
 
 
-async def download_orbit_esa(date: datetime, platform: str, orbit_type: str = "POEORB") -> Optional[Path]:
-    """
-    Baixa a órbita para uma data específica do repositório ESA.
-    Retorna o caminho do arquivo .EOF final (já descompactado) ou None.
-    """
-    # Escolhe a URL base conforme plataforma e tipo
-    if orbit_type == "POEORB":
-        base_url = BASE_URL_POEORB.get(platform)
-    else:
-        base_url = BASE_URL_RESORB.get(platform)
+def _list_orbit_dir(dir_url: str) -> List[str]:
+    """Return .EOF / .EOF.zip hrefs from an ESA STEP directory listing."""
+    try:
+        resp = requests.get(dir_url, timeout=30)
+        resp.raise_for_status()
+    except Exception as e:
+        print(f"Failed to list {dir_url}: {e}")
+        return []
+    soup = BeautifulSoup(resp.text, "html.parser")
+    return [
+        a.get("href", "")
+        for a in soup.find_all("a")
+        if a.get("href", "").endswith((".EOF", ".EOF.zip"))
+    ]
 
+
+def download_orbit_esa(
+    scene_start: datetime,
+    scene_end: datetime,
+    platform: str,
+    orbit_type: str = "POEORB",
+) -> Optional[Path]:
+    """
+    Download the orbit file that brackets [scene_start, scene_end] from
+    the ESA STEP auxiliary data server.
+
+    Selection logic mirrors ISCE2's fetchOrbit.py:
+        orbit_valid_start <= scene_start  AND  orbit_valid_end >= scene_end
+
+    The ESA STEP server organises files by year/month of their VALIDITY START
+    date — NOT year alone. The year/ level only lists month subdirectories.
+
+    Edge case: for scenes early in a month the orbit validity may start in the
+    previous month, so both the scene month and the previous month are checked.
+
+    A deduplication check skips the download when the file already exists.
+    """
+    base_urls = BASE_URL_POEORB if orbit_type == "POEORB" else BASE_URL_RESORB
+    base_url = base_urls.get(platform)
     if not base_url:
-        print(f"Plataforma {platform} não suportada para {orbit_type}")
+        print(f"Unsupported platform '{platform}' for {orbit_type}")
         return None
 
-    # Ano da data (as órbitas estão organizadas por ano)
-    year = date.year
-    # Mês (opcional, mas pode ajudar a reduzir a lista de links)
-    month = f"{date.month:02d}"
-    # Tenta primeiro acessar a subpasta do mês (se existir)
-    possible_urls = [f"{base_url}{year}/{month}/", f"{base_url}{year}/"]
+    # Candidate directories: scene month first, then the previous month.
+    # The orbit validity start date is typically 1 day before the scene,
+    # so a scene on the 1st of a month will need the prior month's directory.
+    prev_month = scene_start.replace(day=1) - timedelta(days=1)
+    candidate_dirs = [
+        f"{base_url}{scene_start.year}/{scene_start.month:02d}/",
+        f"{base_url}{prev_month.year}/{prev_month.month:02d}/",
+    ]
 
-    all_links = []
-    for url in possible_urls:
-        try:
-            resp = requests.get(url, timeout=30)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            # Busca links que terminam com .EOF ou .EOF.zip
-            links = [a.get('href') for a in soup.find_all('a') 
-                     if a.get('href', '').endswith(('.EOF', '.EOF.zip'))]
-            all_links.extend(links)
-            if links:
-                break  # Se encontrou links, não precisa tentar a próxima URL
-        except Exception as e:
-            print(f"Erro ao acessar {url}: {e}")
-            continue
+    matched_filename: Optional[str] = None
+    matched_dir: Optional[str] = None
 
-    if not all_links:
-        print(f"Nenhum link encontrado para {platform} {year}")
-        return None
-
-    best_file = None
-    best_diff = timedelta.max
-
-    for link in all_links:
-        filename = link.split('/')[-1]  # extrai só o nome do arquivo
-        validity = parse_orbit_filename(filename)
-        if not validity:
-            continue
-        start, end = validity
-
-        # Verifica se a data da cena está dentro do intervalo de validade
-        if start <= date <= end:
-            # Se houver vários, escolhe o que tem o centro mais próximo da data
-            mid = start + (end - start) / 2
-            diff = abs(mid - date)
-            if diff < best_diff:
-                best_diff = diff
-                best_file = filename
-
-    if best_file:
-        # Determina a URL correta (pode estar no mês ou no ano)
-        # Para simplificar, tenta o mesmo URL de onde veio o link
-        # (mas o link pode ser relativo, então precisamos construir a URL completa)
-        file_url = None
-        for url in possible_urls:
-            test_url = url + best_file
-            try:
-                head = requests.head(test_url, timeout=10)
-                if head.status_code == 200:
-                    file_url = test_url
-                    break
-            except:
+    for dir_url in candidate_dirs:
+        links = _list_orbit_dir(dir_url)
+        for link in links:
+            filename = link.split("/")[-1]
+            validity = parse_orbit_filename(filename)
+            if validity is None:
                 continue
-        if not file_url:
-            print(f"Não foi possível encontrar URL para {best_file}")
-            return None
+            orbit_start, orbit_end = validity
+            if orbit_covers_scene(orbit_start, orbit_end, scene_start, scene_end):
+                matched_filename = filename
+                matched_dir = dir_url
+                break
+        if matched_filename:
+            break
 
-        # Caminho de saída (inicialmente .EOF.zip, depois será extraído)
-        out_path = DATA_ORBIT_DIR / best_file
-        try:
-            print(f"Baixando {best_file} de {file_url} ...")
-            with requests.get(file_url, stream=True) as r:
-                r.raise_for_status()
-                with open(out_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-            print(f"Download concluído: {out_path}")
-
-            # Se for um zip, descompacta
-            if out_path.suffix == '.zip':
-                eof_path = unzip_file(out_path, delete_zip=True)
-                return eof_path
-            else:
-                return out_path
-        except Exception as e:
-            print(f"Erro ao baixar {file_url}: {e}")
-            return None
-    else:
-        print(f"Nenhuma órbita {orbit_type} encontrada para {date.date()}")
+    if matched_filename is None:
+        print(
+            f"No {orbit_type} covers [{scene_start.isoformat()} – {scene_end.isoformat()}]"
+            f" for {platform}"
+        )
         return None
 
+    # The final file on disk is always a plain .EOF (zip is extracted on arrival).
+    eof_name = matched_filename[:-4] if matched_filename.endswith(".zip") else matched_filename
+    eof_path = DATA_ORBIT_DIR / eof_name
+    if eof_path.exists():
+        print(f"Already exists: {eof_name}")
+        return eof_path
 
-async def download_orbit_for_item(item: pystac.Item) -> None:
-    date = item.datetime
-    if date is None:
-        print(f"Item {item.id} sem datetime, pulando.")
+    file_url = f"{matched_dir}{matched_filename}"
+    out_path = DATA_ORBIT_DIR / matched_filename
+    print(f"Downloading {matched_filename} ...")
+    try:
+        with requests.get(file_url, stream=True, timeout=120) as r:
+            r.raise_for_status()
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        print(f"Saved: {out_path.name}")
+    except Exception as e:
+        print(f"Failed to download {file_url}: {e}")
+        out_path.unlink(missing_ok=True)
+        return None
+
+    if out_path.suffix == ".zip":
+        return unzip_file(out_path, delete_zip=True)
+    return out_path
+
+
+def download_orbit_for_item(item: pystac.Item) -> None:
+    """
+    Resolve and download the orbit file for a single STAC item.
+    Tries POEORB (precise, ~15-20 day lag) first, falls back to RESORB.
+    """
+    scene_start, scene_end = get_scene_window(item)
+    if scene_start is None:
+        print(f"[{item.id}] No datetime available, skipping.")
         return
 
-    platform, orbit = get_platform_and_orbit_from_item(item)
+    platform = get_platform_from_item(item)
     if not platform:
-        print(f"Plataforma não identificada para {item.id}")
+        print(f"[{item.id}] Cannot determine platform, skipping.")
         return
 
-    print(f"Processando {platform} - data {date}")
+    print(f"[{item.id}] {platform} | {scene_start.isoformat()} → {scene_end.isoformat()}")
 
-    # Tenta POEORB (precisa) primeiro
-    out = await download_orbit_esa(date, platform, "POEORB")
+    out = download_orbit_esa(scene_start, scene_end, platform, "POEORB")
     if not out:
-        # Se não achar, tenta RESORB (restituída)
-        out = await download_orbit_esa(date, platform, "RESORB")
+        out = download_orbit_esa(scene_start, scene_end, platform, "RESORB")
 
     if out:
-        print(f"Órbita salva em {out}")
+        print(f"[{item.id}] Orbit ready: {out.name}")
     else:
-        print(f"Nenhuma órbita encontrada para {item.id}")
+        print(f"[{item.id}] No orbit found.")
 
 
-async def main_async():
+def main() -> None:
     json_paths = get_stac_json_paths()
     if not json_paths:
-        print("Nenhum arquivo JSON encontrado.")
+        print("No STAC JSON files found.")
         return
 
     DATA_ORBIT_DIR.mkdir(parents=True, exist_ok=True)
 
-    tasks = []
+    items: List[pystac.Item] = []
     for json_path in json_paths:
         try:
             item = pystac.read_file(json_path)
             assert isinstance(item, pystac.Item)
-            tasks.append(download_orbit_for_item(item))
+            items.append(item)
         except Exception as e:
-            print(f"Erro ao ler {json_path}: {e}")
+            print(f"Failed to read {json_path.name}: {e}")
 
-    await asyncio.gather(*tasks)
-
-
-def main():
-    asyncio.run(main_async())
+    # ThreadPoolExecutor provides real parallelism for blocking HTTP I/O.
+    # asyncio + requests was wrong: async functions with synchronous requests
+    # calls block the event loop — there is no actual concurrency.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {pool.submit(download_orbit_for_item, item): item for item in items}
+        for future in as_completed(futures):
+            item = futures[future]
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[{item.id}] Unhandled error: {e}")
 
 
 if __name__ == "__main__":

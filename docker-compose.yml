@@ -3,6 +3,7 @@ services:
     build:
       context: ./isce2-insar
     volumes:
+      - /home/renan/.netrc:/root/.netrc
       - ./:/workspace
       - isce2-insar-vscode-extensions:/root/.vscode-server/extensions/
     tty: true
@@ -11,6 +12,7 @@ services:
     build:
       context: ./stac-search
     volumes:
+      - /home/renan/.netrc:/root/.netrc
       - ./:/workspace
       - stac-search-vscode-extensions:/root/.vscode-server/extensions/
     environment:
