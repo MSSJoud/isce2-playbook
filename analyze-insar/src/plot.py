@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from osgeo import gdal
+import rasterio
 
 
 def plot_complex_data(
@@ -15,16 +15,15 @@ def plot_complex_data(
     colorbar_orientation: str = "horizontal",
 ) -> None:
     # Load the data into numpy array
-    ds = gdal.Open(gdal_filename, gdal.GA_ReadOnly)
-    slc: np.ndarray = ds.GetRasterBand(1).ReadAsArray()
-    transform = ds.GetGeoTransform()
-    ds = None
+    with rasterio.open(gdal_filename) as ds:
+        slc: np.ndarray = ds.read(1)
+        t = ds.transform
+        firstx = t.c
+        firsty = t.f
+        deltax = t.a
+        deltay = t.e
 
     # getting the min max of the axes
-    firstx = transform[0]
-    firsty = transform[3]
-    deltay = transform[5]
-    deltax = transform[1]
     lastx = firstx + slc.shape[1] * deltax
     lasty = firsty + slc.shape[0] * deltay
     ymin = np.min([lasty, firsty])

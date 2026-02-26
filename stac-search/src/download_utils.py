@@ -9,11 +9,11 @@ from settings import PASSWORD, USERNAME
 
 
 def replace_href(item: pystac.Item) -> pystac.Item:
-    url = item.assets["PRODUCT"].href
+    url = item.assets["product"].href
     parsed_url = urlparse(url)
     new_netloc = "zipper.dataspace.copernicus.eu"
     new_url = urlunparse(parsed_url._replace(netloc=new_netloc))
-    item.assets["PRODUCT"].href = new_url
+    item.assets["product"].href = new_url
     return item
 
 
@@ -26,11 +26,17 @@ async def download_item(item: pystac.Item, output_dir: Path) -> None:
     config.oauth2_client_id = "cdse-public"
     config.http_client_timeout = 3600
     client = await stac_asset.HttpClient.from_config(config=config)
-    await client.download_href(
-        href=item.assets["PRODUCT"].href,
-        path=output_dir
-        / os.path.basename(
-            item.to_dict()["assets"]["PRODUCT"]["alternate"]["s3"]["href"]
-        ),
-    )
-    await client.close()
+    try:
+        # prefer 'product' asset, fallback to first asset
+        asset = item.assets["product"]
+        href = asset.href
+
+        # Nome do arquivo = ID do item + .zip
+        filename = f"{item.id}.zip"
+        outpath = output_dir / filename
+
+        print(f"Downloading {filename} from {href}")
+        await client.download_href(href=href, path=outpath)
+        print(f"Download Concluded: {outpath}")
+    finally:
+        await client.close()
