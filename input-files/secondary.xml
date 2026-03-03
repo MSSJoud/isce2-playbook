@@ -1,5 +1,5 @@
 <component name="secondary">
-    <property name="orbit directory">/workspace/data/orbit</property>
-    <property name="output directory">/workspace/output/secondary</property>
-    <property name="safe">/workspace/data/safe/unzip/S1A_IW_SLC__1SDV_20210212T094602_20210212T094630_036555_044B1A_A7D9.SAFE</property>
+    <property name="orbit directory">/mnt/data/tokyo_test/data/orbit</property>
+    <property name="output directory">/mnt/data/tokyo_test/output/secondary</property>
+    <property name="safe">/mnt/data/tokyo_test/data/safe/unzip/S1A_IW_SLC__1SDV_20210212T094602_20210212T094630_036555_044B1A_A7D9.SAFE</property>
 </component>

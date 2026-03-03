@@ -2,18 +2,22 @@ services:
   isce2-insar:
     build:
       context: ./isce2-insar
+    working_dir: /workspace
     volumes:
-      - /home/renan/.netrc:/root/.netrc
+      - /home/ubuntu/.netrc:/root/.netrc
       - ./:/workspace
+      - /mnt/data/tokyo_test:/mnt/data/tokyo_test
       - isce2-insar-vscode-extensions:/root/.vscode-server/extensions/
     tty: true
 
   stac-search:
     build:
       context: ./stac-search
+    working_dir: /workspace/stac-search
     volumes:
-      - /home/renan/.netrc:/root/.netrc
+      - /home/ubuntu/.netrc:/root/.netrc
       - ./:/workspace
+      - /mnt/data/tokyo_test:/mnt/data/tokyo_test
       - stac-search-vscode-extensions:/root/.vscode-server/extensions/
     environment:
       - COPERNICUS_USER=${COPERNICUS_USER}
@@ -23,8 +27,10 @@ services:
   analyze-insar:
     build:
       context: ./analyze-insar
+    working_dir: /workspace/analyze-insar
     volumes:
       - ./:/workspace
+      - /mnt/data/tokyo_test:/mnt/data/tokyo_test
       - analyze-insar-vscode-extensions:/root/.vscode-server/extensions/
     tty: true
 

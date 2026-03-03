@@ -1,0 +1,136 @@
+<topsAppContext>
+    <property name="applywatermask">
+        <value>True</value>
+        <doc>Flag to apply water mask to images before unwrapping.</doc>
+    </property>
+    <property name="coarsecoregdirectoryname">
+        <value>coarse_coreg</value>
+        <doc>coarse coregistered slc directory name</doc>
+    </property>
+    <property name="coarseinterferogramdirectoryname">
+        <value>coarse_interferogram</value>
+        <doc>Coarse interferogram directory</doc>
+    </property>
+    <property name="coarseoffsetsdirectoryname">
+        <value>coarse_offsets</value>
+        <doc>coarse offsets directory name</doc>
+    </property>
+    <property name="coherencename">
+        <value>phsig.cor</value>
+        <doc>Coherence file name</doc>
+    </property>
+    <property name="correlationname">
+        <value>topophase.cor</value>
+        <doc>Correlation file name</doc>
+    </property>
+    <property name="demcropfilename">
+        <value>dem.crop</value>
+    </property>
+    <property name="esddirectoryname">
+        <value>ESD</value>
+        <doc>ESD directory</doc>
+    </property>
+    <property name="family">
+        <value>topscontext</value>
+        <doc>Instance family name</doc>
+    </property>
+    <property name="filteredinterferogramname">
+        <value>filt_topophase.flat</value>
+        <doc>Filtered interferogram filename</doc>
+    </property>
+    <property name="filteredoffsetfilename">
+        <value>filt_dense_offsets.bil</value>
+        <doc>Filename for filtered dense offsets BIL.</doc>
+    </property>
+    <property name="finecoregdirectoryname">
+        <value>fine_coreg</value>
+        <doc>fine coregistered slc directory name</doc>
+    </property>
+    <property name="fineinterferogramdirectoryname">
+        <value>fine_interferogram</value>
+        <doc>Fine interferogram directory</doc>
+    </property>
+    <property name="fineoffsetsdirectoryname">
+        <value>fine_offsets</value>
+        <doc>fine offsets directory name</doc>
+    </property>
+    <property name="geocodelist">
+        <value>['filt_topophase.unw', 'filt_topophase.flat', 'topophase.cor', 'los.rdr', 'dem.crop']</value>
+        <doc>List of files to geocode</doc>
+    </property>
+    <property name="geometrydirectoryname">
+        <value>geom_reference</value>
+        <doc>Geometry directory</doc>
+    </property>
+    <property name="mergedinterferogramname">
+        <value>topophase.flat</value>
+        <doc>Filename of the merged interferogram.</doc>
+    </property>
+    <property name="mergedlosname">
+        <value>los.rdr</value>
+        <doc>Merged los file name</doc>
+    </property>
+    <property name="mergedproductsdirectoryname">
+        <value>merged</value>
+        <doc>Merged product directory</doc>
+    </property>
+    <property name="name">
+        <value>topsAppContext</value>
+        <doc>Instance name</doc>
+    </property>
+    <property name="numberofswaths">
+        <value>0</value>
+        <doc>Number of swaths</doc>
+    </property>
+    <property name="offsetcovariancefilename">
+        <value>dense_offsets_cov.bil</value>
+        <doc>Filename for gross dense offsets covariance. Used in runDenseOffsets.</doc>
+    </property>
+    <property name="offsetfilename">
+        <value>dense_offsets.bil</value>
+        <doc>Filename for gross dense offsets BIL. Used in runDenseOffsets.</doc>
+    </property>
+    <property name="offsetgeocodelist">
+        <value>['merged/dense_offsets.bil', 'merged/dense_offsets_snr.bil', 'merged/dense_offsets_cov.bil', 'merged/filt_dense_offsets.bil']</value>
+        <doc>List of files on offset grid to geocode</doc>
+    </property>
+    <property name="offsetsnrfilename">
+        <value>dense_offsets_snr.bil</value>
+        <doc>Filename for gross dense offsets SNR. Used in runDenseOffsets.</doc>
+    </property>
+    <property name="overlapssubdirectoryname">
+        <value>overlaps</value>
+        <doc>Overlap region processing directory</doc>
+    </property>
+    <property name="referenceslcproduct">
+        <value>reference</value>
+        <doc>Directory name of the reference SLC product</doc>
+    </property>
+    <property name="secondaryrangecorrection">
+        <value>0.0</value>
+        <doc>Range correction in m to apply to secondary</doc>
+    </property>
+    <property name="secondaryslcproduct">
+        <value>secondary</value>
+        <doc>Directory name of the secondary SLC product</doc>
+    </property>
+    <property name="secondarytimingcorrection">
+        <value>0.0</value>
+        <doc>Timing correction in secs to apply to secondary</doc>
+    </property>
+    <property name="unmaskedfilenameprefix">
+        <value>unmasked</value>
+        <doc>Prefix prepended to the image filenames that have not been water masked</doc>
+    </property>
+    <property name="unwrapped2stagefilename">
+        <value>filt_topophase_2stage.unw</value>
+        <doc>Output File name of 2Stage unwrapper</doc>
+    </property>
+    <property name="unwrappedinterferogramfilename">
+        <value>filt_topophase.unw</value>
+    </property>
+    <property name="watermaskfilename">
+        <value>waterMask.msk</value>
+        <doc>Filename of the water body mask image in radar coordinate cropped to the interferogram size.</doc>
+    </property>
+</topsAppContext>

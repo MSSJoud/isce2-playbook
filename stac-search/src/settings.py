@@ -4,7 +4,9 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).parents[2]
 
-DATA_DIR = ROOT_DIR / "data"
+# Use /mnt/data/tokyo_test as the root data directory
+DATA_ROOT = Path("/mnt/data/tokyo_test")
+DATA_DIR = DATA_ROOT / "data"
 DATA_ORBIT_DIR = DATA_DIR / "orbit"
 DATA_SAFE_DIR = DATA_DIR / "safe"
 DATA_SAFE_ZIP_DIR = DATA_SAFE_DIR / "zip"
@@ -14,7 +16,7 @@ DATA_STAC_DIR = DATA_DIR / "stac"
 
 INPUT_FILES_DIR = ROOT_DIR / "input-files"
 
-OUTPUT_DIR = ROOT_DIR / "output"
+OUTPUT_DIR = DATA_ROOT / "output"
 
 STAC_API_URL = "https://catalogue.dataspace.copernicus.eu/stac"  # https://documentation.dataspace.copernicus.eu/APIs/STAC.html
 COLLECTION = "sentinel-1-slc"

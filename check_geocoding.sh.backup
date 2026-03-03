@@ -1,0 +1,94 @@
+#!/bin/bash
+# Script to check geographic coordinates of InSAR outputs
+
+echo "=============================================================="
+echo "Geographic Coordinates Verification"
+echo "=============================================================="
+echo ""
+
+echo "1. DEM File Information:"
+echo "-----------------------------------------------------------"
+gdalinfo merged/dem.crop 2>&1 | grep -E "Upper|Lower|Corner" | head -10
+echo ""
+
+echo "2. Geocoded Wrapped Phase:"
+echo "-----------------------------------------------------------"
+gdalinfo merged/filt_topophase.flat.geo.vrt 2>&1 | grep -E "Size|Corner|Upper|Lower" | head -15
+echo ""
+
+echo "3. Check DEM filename from log:"
+echo "-----------------------------------------------------------"
+grep -i "dem.*used\|demLat" isce.log | head -5
+echo ""
+
+echo "4. List all DEM files in directory:"
+echo "-----------------------------------------------------------"
+ls -lh demLat*.dem.wgs84 2>/dev/null
+echo ""
+
+echo "5. Geographic bounds summary:"
+echo "-----------------------------------------------------------"
+python3 << 'PYEOF'
+from osgeo import gdal
+import sys
+
+files = [
+    ('Geocoded wrapped phase', 'merged/filt_topophase.flat.geo.vrt'),
+    ('Geocoded coherence', 'merged/phsig.cor.geo.vrt'),
+    ('DEM crop', 'merged/dem.crop')
+]
+
+for name, filepath in files:
+    try:
+        ds = gdal.Open(filepath)
+        if ds:
+            gt = ds.GetGeoTransform()
+            width = ds.RasterXSize
+            height = ds.RasterYSize
+            
+            minX = gt[0]
+            maxY = gt[3]
+            maxX = gt[0] + width * gt[1]
+            minY = gt[3] + height * gt[5]
+            
+            print(f"\n{name}:")
+            print(f"  West:  {minX:.6f}°")
+            print(f"  East:  {maxX:.6f}°")
+            print(f"  North: {maxY:.6f}°")
+            print(f"  South: {minY:.6f}°")
+            print(f"  Size: {width} x {height} pixels")
+            
+            # Determine location
+            if minX < 0 and maxX < 0:
+                hemisphere_ew = "Western Hemisphere"
+            else:
+                hemisphere_ew = "Eastern Hemisphere"
+                
+            if minY < 0:
+                hemisphere_ns = "Southern Hemisphere"
+            else:
+                hemisphere_ns = "Northern Hemisphere"
+                
+            print(f"  Location: {hemisphere_ns}, {hemisphere_ew}")
+            
+            # Check if it's near Tokyo (139-140°E, 35-36°N)
+            tokyo_lon = (139 <= minX <= 140) or (139 <= maxX <= 140)
+            tokyo_lat = (35 <= minY <= 36) or (35 <= maxY <= 36)
+            
+            if tokyo_lon and tokyo_lat:
+                print(f"  ✅ CORRECT - Near Tokyo region")
+            else:
+                print(f"  ❌ WRONG - NOT near Tokyo (expected 139-140°E, 35-36°N)")
+        else:
+            print(f"\n{name}: ❌ Could not open file")
+    except Exception as e:
+        print(f"\n{name}: ❌ Error - {e}")
+PYEOF
+
+echo ""
+echo "=============================================================="
+echo "Expected for Tokyo:"
+echo "  Longitude: 139.0° to 140.0° E"
+echo "  Latitude:  35.0° to 36.0° N"
+echo "=============================================================="
+

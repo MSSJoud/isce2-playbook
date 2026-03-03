@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<topsApp>
+  <component name="topsinsar">
+    <property name="Sensor name">SENTINEL1</property>
+    <component name="reference">
+        <catalog>/workspace/input-files/reference.xml</catalog>
+    </component>
+    <component name="secondary">
+        <catalog>/workspace/input-files/secondary.xml</catalog>
+    </component>
+    
+    <!-- Process only subswath 1 -->
+    <property name="swaths">[1]</property>
+    
+    <!-- ENABLE PHASE UNWRAPPING -->
+    <property name="do unwrap">True</property>
+    <property name="unwrapper name">snaphu_mcf</property>
+    
+    <!-- Optional: Enable 2-stage unwrapping for better results -->
+    <!-- Uncomment if unwrapping quality is poor -->
+    <!--
+    <property name="do unwrap 2 stage">True</property>
+    <property name="unwrapper name 2 stage">REDARC0</property>
+    <property name="solver 2 stage">MCF</property>
+    -->
+    
+    <!-- Multilooking for faster processing and better SNR -->
+    <!-- Default is 5 azimuth x 15 range looks -->
+    <property name="azimuth looks">5</property>
+    <property name="range looks">15</property>
+    
+    <!-- Filtering strength (0.0 to 1.0, default 0.5) -->
+    <!-- Higher values = more smoothing -->
+    <property name="filter strength">0.5</property>
+    
+    <!-- Optional: Region of Interest (faster processing) -->
+    <!-- Format: [lat_min, lat_max, lon_min, lon_max] -->
+    <!-- Uncomment and adjust if you want to process only a subset -->
+    <!--
+    <property name="region of interest">[35.5, 35.8, 139.6, 139.9]</property>
+    -->
+    
+    <!-- Optional: Geocode list (which products to output in geographic coordinates) -->
+    <!-- Default includes: topophase.flat, filt_topophase.flat, phsig.cor, topophase.cor, los.rdr -->
+    <!-- Add unwrapped products to geocode list -->
+    <property name="geocode list">['filt_topophase.unw', 'filt_topophase.flat', 'topophase.cor', 'los.rdr', 'dem.crop']</property>
+    
+  </component>
+</topsApp>

@@ -184,3 +184,10 @@ fine_coreg/
 fine_interferogram/
 fine_offsets/
 merged/
+
+# Repository setup files (local only, not for colleagues)
+GITHUB_SHARING_GUIDE.md
+READY_TO_SHARE.md
+UPDATE_SUMMARY.md
+setup_github_repo.sh
+update_docs_to_third_person.py

@@ -73,13 +73,15 @@ def plot_complex_data(
 
 
 if __name__ == "__main__":
-    from settings import OUTPUT_DIR
+    from pathlib import Path
+    
+    # merged directory is in the project root (/workspace from container)
+    merged_dir = Path("/workspace/merged")
+    output_file = Path("/workspace/filt_topophase_flat.png")
 
     plot_complex_data(
-        gdal_filename=str(
-            (OUTPUT_DIR / "merged" / "filt_topophase.flat.vrt").resolve()
-        ),
-        output_filename=str((OUTPUT_DIR / "filt_topophase_flat.png").resolve()),
+        gdal_filename=str((merged_dir / "filt_topophase.flat.vrt").resolve()),
+        output_filename=str(output_file.resolve()),
         title="MERGED FILT IFG ",
         aspect=1,
         datamin=0,

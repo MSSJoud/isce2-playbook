@@ -2,4 +2,5 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).parents[2]
 
-OUTPUT_DIR = ROOT_DIR
+# Use /mnt/data/tokyo_test as the root data directory
+OUTPUT_DIR = Path("/mnt/data/tokyo_test") / "output"
