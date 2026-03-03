@@ -2,14 +2,14 @@
 
 Complete workflow for Sentinel-1 InSAR processing with ISCE2 and comprehensive metadata inspection tools.
 
-## 🎯 Repository Overview
+## Repository Overview
 
 1. **Complete InSAR Processing Workflow** - From SLC download to unwrapped displacement
 2. **Metadata Inspection Tools** - Extract and analyze ALL SLC/processing metadata
 3. **Geographic Verification** - Validate geocoding correctness
 4. **Comprehensive Documentation** - Step-by-step guides for every process
 
-## 📋 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -44,7 +44,7 @@ docker compose run --rm isce2-insar topsApp.py --help
 # See: README_COMPLETE_WORKFLOW.md
 ```
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 isce2-playbook/
@@ -85,7 +85,7 @@ isce2-playbook/
     └── visualizations/                    # Example output plots
 ```
 
-## 🚀 Core Workflows
+## Core Workflows
 
 ### 1. Process New Interferogram
 
@@ -136,7 +136,7 @@ du -sh merged/ geom_reference/
 gdalinfo merged/filt_topophase.unw.geo.vrt
 ```
 
-## 📚 Documentation Index
+## Documentation Index
 
 | Document | Purpose |
 |----------|---------|
@@ -150,7 +150,7 @@ gdalinfo merged/filt_topophase.unw.geo.vrt
 | [`VISUALIZATION_GUI_GUIDE.md`](VISUALIZATION_GUI_GUIDE.md) | Web-based visualization setup |
 | [`DIRECTORY_MAPPING_EXPLAINED.md`](DIRECTORY_MAPPING_EXPLAINED.md) | Understanding ISCE2 output structure |
 
-## 🔧 Key Tools
+## Key Tools
 
 ### Metadata Inspection
 
@@ -194,7 +194,7 @@ watch -n 5 'du -sh merged/ geom_reference/ fine_interferogram/'
 docker stats isce2-insar
 ```
 
-## 🐳 Docker Services
+## Docker Services
 
 Three services defined in `docker-compose.yml`:
 
@@ -216,7 +216,7 @@ docker compose run --rm isce2-insar bash
 docker compose down
 ```
 
-## 📊 Current Test Case
+## Current Test Case
 
 The repository includes outputs from a processed interferogram:
 
@@ -257,7 +257,7 @@ All outputs available in radar and geographic coordinates:
 - Digital elevation model
 - Amplitude images
 
-## 🤝 Contributing / Continuing Work
+## Contributing / Continuing Work
 
 ### To Process New Data
 
@@ -288,7 +288,7 @@ docker compose run --rm analyze-insar python3
 >>> # Your analysis code
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -328,7 +328,7 @@ ls -la demLat*.dem.wgs84
 4. Inspect metadata: `./show_slc_metadata.sh`
 5. Check ISCE2 logs: `tail -100 isce.log`
 
-## 📧 Sharing Results
+## Sharing Results
 
 ### Export Metadata
 
@@ -370,15 +370,34 @@ tar -czf isce2-playbook-$(date +%Y%m%d).tar.gz \
 - **GDAL Documentation**: https://gdal.org
 - **SNAPHU Manual**: https://web.stanford.edu/group/radar/softwareandlinks/sw/snaphu/
 
-## 📄 License
+## License
 
-[Add your license here]
+MIT License
 
-## ✍️ Authors
+Copyright (c) 2026 MSSJoud
 
-[Add authors/contributors]
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-## 🙏 Acknowledgments
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+## Authors
+
+MSSJoud
+
+## Acknowledgments
 
 - ISCE2: NASA/JPL InSAR processing software
 - Sentinel-1: ESA Copernicus Programme
